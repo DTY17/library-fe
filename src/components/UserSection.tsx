@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAll, addItem, updateItem, deleteItem, readFileAsDataUrl } from "../service/localStore";
+import { getAll, addItem, updateItem, deleteItem, readFileAsDataUrl, simulateDelay } from "../service/localStore";
 import type { User } from "../service/library";
 import "./library.css";
 
@@ -61,6 +61,7 @@ export default function UserSection(): any {
 
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     refreshUsers();
@@ -144,6 +145,8 @@ export default function UserSection(): any {
       // in place of the backend's returned image filename.
       const image = photoFile ? await readFileAsDataUrl(photoFile) : formData.image;
 
+      await simulateDelay();
+
       if (formMode === "add") {
         addItem<User>(USERS_KEY, { ...formData, image });
       } else if (formMode === "edit" && editingId) {
@@ -160,13 +163,17 @@ export default function UserSection(): any {
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
     try {
+      await simulateDelay();
       deleteItem<User>(USERS_KEY, id);
       refreshUsers();
     } catch (err) {
       console.error("Delete user failed:", err);
       alert("Failed to delete user. Check the console.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -230,8 +237,12 @@ export default function UserSection(): any {
                     <button onClick={() => handleOpenEdit(u)} className="btn btn-update">
                       Update
                     </button>
-                    <button onClick={() => handleDelete(u.id)} className="btn btn-delete">
-                      Delete
+                    <button
+                      onClick={() => handleDelete(u.id)}
+                      className="btn btn-delete"
+                      disabled={deletingId === u.id}
+                    >
+                      {deletingId === u.id ? "Deleting..." : "Delete"}
                     </button>
                   </div>
                 </td>

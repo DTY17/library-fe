@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAll, addItem, updateItem, deleteItem } from "../service/localStore";
+import { getAll, addItem, updateItem, deleteItem, simulateDelay } from "../service/localStore";
 import type { BorrowRecord, User, Book } from "../service/library";
 import "./library.css";
 
@@ -55,6 +55,7 @@ export default function RecordSection(): any {
   const [submitting, setSubmitting] = useState(false);
 
   const [returningId, setReturningId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     refreshRecords();
@@ -98,7 +99,7 @@ export default function RecordSection(): any {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmitForm = () => {
+  const handleSubmitForm = async () => {
     if (!formData.userId || !formData.bookId) {
       alert("Please select both a user and a book.");
       return;
@@ -106,6 +107,7 @@ export default function RecordSection(): any {
 
     setSubmitting(true);
     try {
+      await simulateDelay();
       if (formMode === "add") {
         addItem<BorrowRecord>(RECORDS_KEY, {
           userId: formData.userId,
@@ -131,17 +133,21 @@ export default function RecordSection(): any {
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
     try {
+      await simulateDelay();
       deleteItem<BorrowRecord>(RECORDS_KEY, id);
       refreshRecords();
     } catch (err) {
       console.error("Delete record failed:", err);
       alert("Failed to delete record. Check the console.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
-  const handleReturn = (r: BorrowRecord) => {
+  const handleReturn = async (r: BorrowRecord) => {
     if (r.state === "RETURNED") return;
     const confirmed = window.confirm(
       `Mark this record (user: ${r.userId}, book: ${r.bookId}) as returned?`
@@ -150,6 +156,7 @@ export default function RecordSection(): any {
 
     setReturningId(r.id);
     try {
+      await simulateDelay();
       updateItem<BorrowRecord>(RECORDS_KEY, r.id, {
         state: "RETURNED",
         returnedDate: todayISO(),
@@ -233,8 +240,12 @@ export default function RecordSection(): any {
                     <button onClick={() => handleOpenEdit(r)} className="btn btn-update">
                       Update
                     </button>
-                    <button onClick={() => handleDelete(r.id)} className="btn btn-delete">
-                      Delete
+                    <button
+                      onClick={() => handleDelete(r.id)}
+                      className="btn btn-delete"
+                      disabled={deletingId === r.id}
+                    >
+                      {deletingId === r.id ? "Deleting..." : "Delete"}
                     </button>
                     <button
                       onClick={() => handleReturn(r)}

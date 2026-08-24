@@ -83,3 +83,9 @@ export function readFileAsDataUrl(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+// Artificially delays local operations so add/update/delete feel like they're
+// actually hitting a network request instead of resolving instantly.
+export function simulateDelay(ms: number = 2000): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}

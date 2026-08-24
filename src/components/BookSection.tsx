@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAll, addItem, updateItem, deleteItem } from "../service/localStore";
+import { getAll, addItem, updateItem, deleteItem, simulateDelay } from "../service/localStore";
 import type { Book } from "../service/library";
 import "./library.css";
 
@@ -44,6 +44,8 @@ export default function BookSection() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<BookFormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [stockUpdatingId, setStockUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     refreshBooks();
@@ -80,7 +82,7 @@ export default function BookSection() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmitForm = () => {
+  const handleSubmitForm = async () => {
     if (!formData.name.trim() || !formData.author.trim()) {
       alert("Please enter both a name and an author.");
       return;
@@ -92,6 +94,7 @@ export default function BookSection() {
 
     setSubmitting(true);
     try {
+      await simulateDelay();
       if (formMode === "add") {
         addItem<Book>(BOOKS_KEY, { ...formData });
       } else if (formMode === "edit" && editingId) {
@@ -107,23 +110,31 @@ export default function BookSection() {
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
     try {
+      await simulateDelay();
       deleteItem<Book>(BOOKS_KEY, id);
       refreshBooks();
     } catch (err) {
       console.error("Delete book failed:", err);
       alert("Failed to delete book. Check the console.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
-  const handleStock = (b: Book) => {
+  const handleStock = async (b: Book) => {
+    setStockUpdatingId(b.id);
     try {
+      await simulateDelay();
       updateItem<Book>(BOOKS_KEY, b.id, { stock: b.stock + 1 });
       refreshBooks();
     } catch (err) {
       console.error("Update stock failed:", err);
       alert("Failed to update stock. Check the console.");
+    } finally {
+      setStockUpdatingId(null);
     }
   };
 
@@ -181,11 +192,19 @@ export default function BookSection() {
                     <button onClick={() => handleOpenEdit(b)} className="btn btn-update">
                       Update
                     </button>
-                    <button onClick={() => handleDelete(b.id)} className="btn btn-delete">
-                      Delete
+                    <button
+                      onClick={() => handleDelete(b.id)}
+                      className="btn btn-delete"
+                      disabled={deletingId === b.id}
+                    >
+                      {deletingId === b.id ? "Deleting..." : "Delete"}
                     </button>
-                    <button onClick={() => handleStock(b)} className="btn btn-stock">
-                      Add Stock
+                    <button
+                      onClick={() => handleStock(b)}
+                      className="btn btn-stock"
+                      disabled={stockUpdatingId === b.id}
+                    >
+                      {stockUpdatingId === b.id ? "Updating..." : "Add Stock"}
                     </button>
                   </div>
                 </td>
